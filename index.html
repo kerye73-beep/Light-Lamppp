@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lampu Gantung</title>
+<style>
+  :root {
+    --bg: #17162b;
+    --text-dark: #0b0f2b;
+    --cyan: #19f0e4;
+    --beam: rgba(25, 240, 228, .4);
+    --ink: #e9eaf5;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+    overflow: hidden;
+  }
+  #stars { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; }
+
+  .stage { position: relative; height: 100%; }
+
+  .message {
+    position: absolute; left: 0; right: 0; top: 52%;
+    transform: translateY(-50%);
+    text-align: center; padding: 0 16px;
+    color: #17162b;
+    font-family: "Arial Black", "Segoe UI Black", Impact, system-ui, sans-serif;
+    transform: translateY(-50%);
+    font-weight: 900; letter-spacing: .06em;
+    font-size: clamp(15px, 12vw, 40px);
+    user-select: none;
+    z-index: 2; pointer-events: none;
+  }
+  .message small { color: #17162b; }
+  .message small {
+    display: block; margin-top: 10px;
+    font-size: clamp(13px, 3vw, 20px); font-weight: 800; letter-spacing: .14em;
+  }
+
+  /* pendulum */
+  .pendulum {
+    position: absolute; top: 0; left: 50%;
+    width: 0; height: 0;
+    transform-origin: 0 0;
+    animation: swing 4.2s ease-in-out infinite alternate;
+  }
+  @keyframes swing {
+    from { transform: rotate(-26deg); }
+    to   { transform: rotate(26deg); }
+  }
+  .wire {
+    position: absolute; top: 0; left: -1.5px; width: 3px; height: 28vh; min-height: 150px;
+    background: linear-gradient(#4b6fa8, #e0573f);
+  }
+  .lamp {
+    --drop: max(28vh, 150px);
+    position: absolute; top: var(--drop); left: 0;
+  }
+  .shade {
+    position: absolute; left: -60px; top: -22px; width: 120px; height: 44px;
+    background: #4fd9d2; border-radius: 50% 50% 46% 46% / 70% 70% 30% 30%;
+    transition: background .3s, box-shadow .3s;
+  }
+  .bulb {
+    position: absolute; left: -9px; top: 12px; width: 18px; height: 18px; border-radius: 50%;
+    background: #6c7390; transition: background .3s, box-shadow .3s;
+  }
+  .beam {
+    position: absolute; top: 20px; left: -80px; width: 160px;
+    height: 150vh;
+    background: var(--beam);
+    clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%);
+    transform: scaleX(3.2);
+    transform-origin: 50% 0;
+    opacity: 0; transition: opacity .35s;
+    pointer-events: none;
+  }
+  .lamp.off .shade { background: #2b8f94; }
+  .lamp:not(.off) .shade { background: var(--cyan); box-shadow: 0 0 40px 10px rgba(25,240,228,.55); }
+  .lamp:not(.off) .bulb { background: #e8fffd; box-shadow: 0 0 26px 10px rgba(180,255,250,.9); }
+  .lamp:not(.off) .beam { opacity: 1; }
+
+  /* switch */
+  .switch {
+    position: absolute; left: 0; right: 0; bottom: max(8vh, 56px);
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    font-size: 14px; letter-spacing: .12em;
+  }
+  .switch label { position: relative; width: 52px; height: 28px; cursor: pointer; display: block; }
+  .switch input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; z-index: 2; }
+  .track {
+    position: absolute; inset: 0; border-radius: 28px; background: #cfd3de; transition: background .25s;
+  }
+  .thumb {
+    position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%;
+    background: #fff; transition: transform .25s;
+  }
+  .switch input:checked ~ .track { background: var(--cyan); }
+  .switch input:checked ~ .thumb { transform: translateX(24px); }
+  .switch input:focus-visible ~ .track { outline: 3px solid #fff; outline-offset: 3px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pendulum { animation-duration: 12s; }
+  }
+</style>
+</head>
+<body>
+<canvas id="stars" aria-hidden="true"></canvas>
+
+<main class="stage">
+  <div class="message" id="message">
+      MarMora, My Fav Person☆
+    <small>Forever Together</small>
+  </div>
+
+  <div class="pendulum" id="pendulum">
+    <div class="wire"></div>
+    <div class="lamp off" id="lamp">
+      <div class="beam"></div>
+      <div class="shade"></div>
+      <div class="bulb"></div>
+    </div>
+  </div>
+
+  <div class="switch">
+    <span>ON / OFF</span>
+    <label>
+      <input type="checkbox" id="lightswitch" aria-label="Lamp on/off">
+      <span class="track"></span>
+      <span class="thumb"></span>
+    </label>
+  </div>
+</main>
+
+<script>
+  const lightSwitch = document.getElementById('lightswitch');
+  const lamp = document.getElementById('lamp');
+
+  // set initial state based on checkbox
+  if (lightSwitch.checked) { lamp.classList.remove('off'); document.body.classList.add('on'); }
+
+  lightSwitch.addEventListener('change', function () {
+    if (this.checked) {
+      lamp.classList.remove('off');
+    } else {
+      lamp.classList.add('off');
+    }
+    document.body.classList.toggle('on', this.checked);
+  });
+
+  // starfield
+  const c = document.getElementById('stars');
+  const ctx = c.getContext('2d');
+  const colors = ['#ffffff', '#ffd9a0', '#9fd0ff', '#ff9fb0', '#b7ffd2'];
+  function drawStars() {
+    const dpr = window.devicePixelRatio || 1;
+    c.width = innerWidth * dpr; c.height = innerHeight * dpr;
+    ctx.scale(dpr, dpr);
+    const n = Math.floor(innerWidth * innerHeight / 3500);
+    for (let i = 0; i < n; i++) {
+      ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+      ctx.globalAlpha = .35 + Math.random() * .65;
+      const r = Math.random() * 1.4 + .4;
+      ctx.beginPath();
+      ctx.arc(Math.random() * innerWidth, Math.random() * innerHeight, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  drawStars();
+  let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(drawStars, 150); });
+</script>
+</body>
+</html>
